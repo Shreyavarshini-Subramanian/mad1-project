@@ -2,7 +2,6 @@ from flask import Flask, render_template, redirect, url_for, request, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-import os
 from pytz import timezone
 import pytz
 from zoneinfo import ZoneInfo
@@ -12,7 +11,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.sqlite3'
 app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy()
 db.init_app(app)
-base_dir=os.path.dirname(os.path.abspath(__file__))
 
 class User(db.Model):
     __tablename__ = 'user'
