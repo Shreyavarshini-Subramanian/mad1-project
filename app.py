@@ -63,3 +63,76 @@ def create_tables():
         admin=Admin(email="abc@gmail.com",password=generate_password_hash("Shreya@123"),name="Admin")
         db.session.add(admin)
         db.session.commit()
+
+@app.route('/clear_flash_messages', methods=['POST'])
+def clear_flash_messages():
+    session.pop('_flashes', None) 
+    return '', 204
+
+@app.route('/')
+def start():
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method=='POST':
+        email=request.form.get('email')
+        password=request.form.get('password')
+        name=request.form.get('name')
+        address=request.form.get('address')
+        pincode=request.form.get('pincode')
+        if not email or not password or not name or not address or not pincode:
+            flash("All fields are required!", "danger")
+        else:
+            exist=User.query.filter_by(email=email).first()
+            if exist:
+                flash("User already registered!","warning")
+                return redirect(url_for('register'))
+            else:
+                p=generate_password_hash(password)
+                new=User(email=email, password=p,name=name, address=address, pincode=pincode)
+                try:
+                    db.session.add(new)
+                    db.session.commit()
+                    flash("Registered successfully!","success!!")
+                    return redirect(url_for('login'))
+                except Exception as x:
+                    db.session.rollback()
+                    flash(f"{str(x)}")
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        if not email or not password:
+            flash("All fields are required!", "danger")
+        else:
+            admin = Admin.query.filter_by(email=email).first()
+            if admin and check_password_hash(admin.password, password):
+                session['admin_id'] = admin.id
+                session['name'] = admin.name
+                session['user_role'] = 'admin'
+                flash("Admin login successful", "success")
+                return redirect(url_for('admin_dashboard'))
+            user = User.query.filter_by(email=email).first()
+            if user and check_password_hash(user.password, password):
+                session['u_id'] = user.u_id
+                session['name'] = user.name
+                flash("User login successful", "success")
+                return redirect(url_for('user_dashboard'))
+            flash("Invalid login credentials!", "warning")
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    if 'admin_id' in session:
+        admin_or_not = True
+    elif 'u_id' in session:
+        admin_or_not = False
+    else:
+        flash("No active session found", "info")
+        return redirect(url_for('login'))
+    session.clear()
+    return render_template('logout.html', admin=admin_or_not)
