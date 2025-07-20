@@ -127,15 +127,12 @@ def login():
 
 @app.route('/logout')
 def logout():
-    if 'admin_id' in session:
-        admin_or_not = True
-    elif 'u_id' in session:
-        admin_or_not = False
+    if 'u_id' in session:
+        admin_or_not = True 
     else:
-        flash("No active session found", "info")
-        return redirect(url_for('login'))
+        admin_or_not = False
     session.clear()
-    return render_template('logout.html', admin=admin_or_not)
+    return render_template('logout.html', admin_or_not=admin_or_not)
 
 @app.route('/admin_dashboard', methods=['GET', 'POST'])
 def admin_dashboard():
