@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Registered Users</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f3f7;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h3 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: #dff0ff;
+            color: #333;
+        }
+        .no-data {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-success px-4">
+    <span class="navbar-brand text-white">Admin Dashboard</span>
+    <div class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}">Home</a></li>
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('view_users') }}">Users</a></li>
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('admin_search') }}">Search</a></li>
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('admin_summary') }}">Summary</a></li>
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <h3>Registered Users</h3>
+    {% if users %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>E-Mail</th>
+                <th>Full Name</th>
+                <th>Address</th>
+                <th>Pin Code</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.u_id }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.name }}</td>
+                <td>{{ user.address }}</td>
+                <td>{{ user.pincode }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">No users registered yet.</div>
+    {% endif %}
+</div>
+
+</body>
+</html>

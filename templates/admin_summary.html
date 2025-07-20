@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Summary</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-success px-4">
+    <span class="navbar-brand text-white">Admin Dashboard</span>
+    <div class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}">Home</a></li>
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('view_users') }}">Users</a></li>
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('admin_search') }}">Search</a></li>
+            <li class="nav-item"><a class="nav-link active text-white" href="{{ url_for('admin_summary') }}">Summary</a></li>
+            <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <h2 class="text-center text-primary mb-4">Parking Lot Revenue Summary</h2>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Lot ID</th>
+                    <th>Location</th>
+                    <th>Rate (₹/hr)</th>
+                    <th>Total Spots</th>
+                    <th>Occupied</th>
+                    <th>Available</th>
+                    <th>Total Revenue (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lot in summary %}
+                <tr>
+                    <td>{{ lot.lot_id }}</td>
+                    <td>{{ lot.name }}</td>
+                    <td>₹{{ lot.rate }}</td>
+                    <td>{{ lot.total }}</td>
+                    <td class="text-danger">{{ lot.occupied }}</td>
+                    <td class="text-success">{{ lot.available }}</td>
+                    <td>₹{{ lot.revenue }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="text-end fw-bold fs-5 text-primary mt-3">
+        Total Revenue: ₹{{ total_revenue }}
+    </div>
+</div>
+
+</body>
+</html>
+
+

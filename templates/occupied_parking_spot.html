@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Occupied Spot Details</title>
+  <style>
+    body {
+      background-color: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .card {
+      max-width: 450px;
+      margin: 40px auto;
+      background-color: #fff;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+
+    h3 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .label {
+      font-weight: 500;
+      margin-top: 10px;
+      color: #444;
+    }
+
+    .value {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .btn-close {
+      margin-top: 20px;
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 8px;
+      background-color: #ccc;
+      color: #333;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h3>Occupied Parking Spot Details</h3>
+
+    <div class="label">ID:</div>
+    <div class="value">{{ spot.spot_id }}</div>
+
+    <div class="label">Customer ID:</div>
+    <div class="value">{{ spot['customer_id'] }}</div>
+
+    <div class="label">Vehicle Number:</div>
+    <div class="value">{{ spot.vehicle_no }}</div>
+
+    <div class="label">Date/Time of Parking:</div>
+    <div class="value">{{ spot.timestamp }}</div>
+
+    <div class="label">Est. Parking Cost:</div>
+    <div class="value">₹{{ spot.cost }}</div>
+
+    <a href="{{ url_for('admin_dashboard') }}" class="btn-close">Close</a>
+  </div>
+
+</body>
+</html>

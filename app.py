@@ -136,3 +136,218 @@ def logout():
         return redirect(url_for('login'))
     session.clear()
     return render_template('logout.html', admin=admin_or_not)
+
+@app.route('/admin_dashboard', methods=['GET', 'POST'])
+def admin_dashboard():
+    lots = ParkingLot.query.all()
+    parking_lots = []
+    for lot in lots:
+        spots = ParkingSpot.query.filter_by(lot_id=lot.lot_id).all()
+        total = len(spots)  
+        occupied = 0
+        for s in spots:
+            if s.status=='O':
+                occupied=occupied+1
+
+        parking_lots.append({
+            'id': lot.lot_id,
+            'name': lot.prime_location_name,
+            'occupied': occupied,
+            'total': total,
+            'spots': spots  
+        })
+    return render_template('admin_dashboard.html', parking_lots=parking_lots)
+
+@app.route('/add_parking_lot', methods=['GET', 'POST'])
+def add_parking_lot():
+    if request.method == 'POST':
+        name = request.form['name']
+        address = request.form['address']
+        pincode = request.form['pincode']
+        price = request.form['price']
+        max_spots = int(request.form['max_spots'])
+        new_lot = ParkingLot(
+            prime_location_name=name,
+            address=address,
+            pincode=pincode,
+            price_per_hour=float(price),
+            max_spots=max_spots
+        )
+        db.session.add(new_lot)
+        db.session.commit()
+        for i in range(1, max_spots + 1):
+            new_spot = ParkingSpot(
+                lot_id=new_lot.lot_id,
+                status='A'
+            )
+            db.session.add(new_spot)
+        db.session.commit()
+        flash('Parking lot added successfully with spots', 'success')
+        return redirect(url_for('admin_dashboard'))
+    return render_template('add_parking_lot.html')
+
+@app.route('/edit_parking_lot/<int:lot_id>', methods=['GET', 'POST'])
+def edit_parking_lot(lot_id):
+    lot = ParkingLot.query.get_or_404(lot_id)
+    if request.method == 'POST':
+        new_max_spots = int(request.form['max_spots'])
+        lot.prime_location_name = request.form['prime_location_name']
+        lot.address = request.form['address']
+        lot.pincode = request.form['pincode']
+        lot.price_per_hour = float(request.form['price_per_hour'])
+        current_spots = ParkingSpot.query.filter_by(lot_id=lot_id).all()
+        current_count = len(current_spots)
+
+        if new_max_spots > current_count:
+            for i in range(current_count + 1, new_max_spots + 1):
+                new_spot = ParkingSpot(
+                    lot_id=lot.lot_id,
+                    status='A'
+                )
+                db.session.add(new_spot)
+        elif new_max_spots < current_count:
+            removable_spots = ParkingSpot.query.filter_by(lot_id=lot_id, status='A').order_by(ParkingSpot.spot_id.desc()).all()
+            to_remove = current_count - new_max_spots
+            count = 0
+            for spot in removable_spots:
+                if count >= to_remove:
+                    break
+                db.session.delete(spot)
+                count += 1
+        lot.max_spots = new_max_spots
+        db.session.commit()
+        flash('Parking lot updated successfully', 'success')
+        return redirect(url_for('admin_dashboard'))
+    return render_template('edit_parking_lot.html', lot=lot)
+
+@app.route('/delete_parking_lot/<int:lot_id>', methods=['POST'])
+def delete_parking_lot(lot_id):
+    lot = ParkingLot.query.get_or_404(lot_id)
+    o_spots = ParkingSpot.query.filter_by(lot_id=lot.lot_id, status='O').count()
+    if o_spots > 0:
+        flash('Cannot delete: This parking lot has reserved spots!', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    try:
+        ParkingSpot.query.filter_by(lot_id=lot.lot_id).delete()
+        db.session.delete(lot)
+        db.session.commit()
+        flash('Parking Lot deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/view_delete_parking_spot/<int:spot_id>', methods=['GET', 'POST'])
+def view_delete_parking_spot(spot_id):
+    spot = ParkingSpot.query.get_or_404(spot_id)
+    if request.method == 'POST':
+        if spot.status == 'A':  
+            db.session.delete(spot)
+            lot=ParkingLot.query.get(spot.lot_id)
+            if lot.max_spots>0:
+                lot.max_spots-=1
+            db.session.commit()
+            flash('Spot deleted successfully', 'success')
+        else:
+            flash('Cannot delete an occupied spot!', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    return render_template('view_delete_parking_spot.html', spot=spot)
+
+@app.route('/occupied_parking_spot_details/<int:spot_id>')
+def occupied_parking_spot_details(spot_id):
+    spot = ParkingSpot.query.get_or_404(spot_id)
+    if spot.status != 'O':
+        flash('This spot is not currently occupied.', 'info')
+        return redirect(url_for('admin_dashboard'))
+    reservation = Reservation.query.filter_by(spot_id=spot.spot_id, leaving_timestamp=None).first()
+    if not reservation:
+        flash('No active reservation found for this spot.', 'info')
+        return redirect(url_for('admin_dashboard'))
+    lot = ParkingLot.query.get(spot.lot_id)
+    ist = timezone('Asia/Kolkata')
+    utc_time = reservation.parking_timestamp
+    if utc_time.tzinfo is None:
+        utc_time = pytz.utc.localize(utc_time)
+    ist_time = utc_time.astimezone(ist)
+    now_ist = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(ist)
+    duration = (now_ist - ist_time).total_seconds() / 3600  
+    cost = round(duration * lot.price_per_hour, 2)
+
+    data = {
+        'spot_id': spot.spot_id,
+        'customer_id': reservation.user_id,
+        'vehicle_no': reservation.vehicle_no,
+        'timestamp': ist_time.strftime('%Y-%m-%d %H:%M'),
+        'cost': cost
+    }
+    return render_template('occupied_parking_spot.html', spot=data)
+
+@app.route('/admin/users')
+def view_users():
+    users = User.query.all()
+    return render_template('view_users.html', users=users)
+
+@app.route('/admin/search', methods=['GET'])
+def admin_search():
+    filter_by = request.args.get('filter_by')
+    search_query = request.args.get('search_query')
+    results = []
+    if filter_by and search_query:
+        if filter_by == "location":
+            results = ParkingLot.query.filter(ParkingLot.prime_location_name.ilike(f"%{search_query}%")).all()
+        elif filter_by == "pincode":
+            results = ParkingLot.query.filter(ParkingLot.pincode.ilike(f"%{search_query}%")).all()
+    return render_template('admin_search.html', results=results)
+
+@app.route('/admin/summary')
+def admin_summary():
+    lots = ParkingLot.query.all()
+    total_spots = 0
+    total_occupied = 0
+    total_revenue = 0.0
+    summary = []
+    ist = pytz.timezone('Asia/Kolkata')
+    now = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(ist)
+    for lot in lots:
+        occupied = 0
+        available = 0
+        for s in lot.spots:
+            if s.status=='O':
+                occupied=occupied+1
+            else:
+                available=available+1
+        total = occupied + available
+        reservations = Reservation.query.join(ParkingSpot).filter(ParkingSpot.lot_id == lot.lot_id).all()
+        revenue = 0.0
+        for res in reservations:
+            if res.total_cost:
+                revenue += res.total_cost
+            elif res.parking_timestamp:
+                parked_time = res.parking_timestamp.replace(tzinfo=pytz.utc).astimezone(ist)
+                if res.leaving_timestamp:
+                    left_time = res.leaving_timestamp.replace(tzinfo=pytz.utc).astimezone(ist)
+                else:
+                    left_time = now  
+                duration = (left_time - parked_time).total_seconds() / 3600
+                estimated_cost = round(duration * lot.price_per_hour, 2)
+                revenue += estimated_cost
+        total_spots += total
+        total_occupied += occupied
+        total_revenue += revenue
+        summary.append({
+            'lot_id': lot.lot_id,
+            'name': lot.prime_location_name,
+            'rate': lot.price_per_hour,
+            'occupied': occupied,
+            'available': available,
+            'total': total,
+            'revenue': round(revenue, 2)
+        })
+    total_available = total_spots - total_occupied
+    return render_template("admin_summary.html",
+                           summary=summary,
+                           total_lots=len(lots),
+                           total_spots=total_spots,
+                           total_occupied=total_occupied,
+                           total_available=total_available,
+                           total_revenue=round(total_revenue, 2))

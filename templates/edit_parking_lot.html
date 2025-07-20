@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Parking Lot</title>
+    <style>
+        body {
+            background-color: #f9f9f9;
+            font-family: Arial, sans-serif;
+        }
+
+        .form-container {
+            max-width: 450px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+        }
+
+        .form-container h2 {
+            font-size: 22px;
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            display: block;
+            color: #444;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #ccc;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>Edit Parking Lot</h2>
+    <form method="POST" action="{{ url_for('edit_parking_lot', lot_id=lot.lot_id) }}">
+        <label class="form-label">Location Name</label>
+        <input type="text" class="form-control" name="prime_location_name" value="{{ lot.prime_location_name }}" required>
+
+        <label class="form-label">Address</label>
+        <textarea class="form-control" name="address" rows="2" required>{{ lot.address }}</textarea>
+
+        <label class="form-label">Pin Code</label>
+        <input type="text" class="form-control" name="pincode" value="{{ lot.pincode }}" required>
+
+        <label class="form-label">Price (₹/hr)</label>
+        <input type="number" class="form-control" name="price_per_hour" value="{{ lot.price_per_hour }}" required>
+
+        <label class="form-label">Max Spots</label>
+        <input type="number" class="form-control" name="max_spots" value="{{ lot.max_spots }}" required>
+
+        <div class="btn-row">
+            <button type="submit" class="btn btn-primary">Update</button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>
