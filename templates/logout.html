@@ -26,11 +26,11 @@
 <body>
     <div class="card">
         {% if admin_or_not %}
+        <h3>See you again!</h3>
+            <p>You have successfully logged out from User Dashboard.</p>
+        {% else %}
         <h3>See you again Admin!</h3>
             <p>You have successfully logged out from Admin panel.</p>
-        {% else %}
-                <h3>See you again!</h3>
-            <p>You have successfully logged out from User Dashboard.</p>
         {% endif %}
         <a href="{{ url_for('login') }}" class="btn btn-primary mt-3">Login Again</a>
     </div>

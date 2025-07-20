@@ -351,3 +351,161 @@ def admin_summary():
                            total_occupied=total_occupied,
                            total_available=total_available,
                            total_revenue=round(total_revenue, 2))
+
+def get_current_user():
+    u_id = session.get('u_id')
+    if u_id:
+        return User.query.filter_by(u_id=u_id).first()
+    return None
+
+def get_parking_history(user_id):
+    history = Reservation.query.filter_by(user_id=user_id).order_by(Reservation.parking_timestamp.desc()).all()
+    for res in history:
+        res.parking_timestamp = res.parking_timestamp.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata"))
+    return history or []
+
+def get_lots_by_location(location):
+    lots = ParkingLot.query.filter(ParkingLot.prime_location_name.ilike(f"%{location}%")).all()
+    return lots or []
+
+@app.route('/user')
+def user_dashboard():
+    user = get_current_user()
+    if not user:
+        flash("Please log in to continue.", "warning")
+        return redirect(url_for('login')) 
+    history = get_parking_history(user.u_id)
+    location = request.args.get("location", "")
+    lots = get_lots_by_location(location)
+    return render_template("user_dashboard.html", user=user, history=history, location=location, lots=lots)
+
+def reserve_spot(user_id, spot_id, lot_id, vehicle_no):
+    spot = ParkingSpot.query.get(spot_id)
+    if spot:
+        spot.status = 'O'
+        reservation = Reservation(
+            user_id=user_id,
+            spot_id=spot_id,
+            vehicle_no=vehicle_no,
+            parking_timestamp=datetime.utcnow()
+        )
+        db.session.add(reservation)
+        db.session.commit()
+
+def get_available_spot(lot_id):
+    return ParkingSpot.query.filter_by(lot_id=lot_id, status='A').first()
+
+@app.route('/user/book/<int:lot_id>', methods=['GET', 'POST'])
+def book_parking_spot(lot_id):
+    user = get_current_user()
+    spot = get_available_spot(lot_id)
+    if not spot:
+        flash("No available spots in this lot!", "warning")
+        return redirect('/user')
+    if request.method == 'POST':
+        vehicle_no = request.form['vehicle_no']
+        reserve_spot(user.u_id, spot.spot_id, lot_id, vehicle_no)
+        return redirect('/user')
+    return render_template("book_parking_spot.html", user=user, spot=spot)
+
+def release_spot(booking_id):
+    reservation = Reservation.query.get(booking_id)
+    if reservation and not reservation.leaving_timestamp:
+        spot = ParkingSpot.query.get(reservation.spot_id)
+        lot = ParkingLot.query.get(spot.lot_id)
+        now = datetime.utcnow()
+        duration = (now - reservation.parking_timestamp).total_seconds() / 3600
+        cost = round(duration * lot.price_per_hour, 2)
+        reservation.leaving_timestamp = now
+        reservation.total_cost = cost
+        spot.status = 'A'  
+        db.session.commit()
+
+def get_release_details(booking_id):
+    reservation = Reservation.query.get(booking_id)
+    if reservation:
+        spot = ParkingSpot.query.get(reservation.spot_id)
+        lot = ParkingLot.query.get(spot.lot_id)
+        ist = pytz.timezone('Asia/Kolkata')
+        now = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(ist)
+        parked_time = parked_time = reservation.parking_timestamp.replace(tzinfo=pytz.utc).astimezone(ist)
+        duration = (now - parked_time).total_seconds() / 3600  
+        cost = round(duration * lot.price_per_hour, 2)
+        return {
+                'spot_id': spot.spot_id,
+                'vehicle_no': reservation.vehicle_no,
+                'park_time': parked_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'release_time': now.strftime('%Y-%m-%d %H:%M:%S'),
+                'cost': cost
+               }
+    return None
+      
+@app.route('/user/release/<int:booking_id>', methods=['GET', 'POST'])
+def release_parking_spot(booking_id):
+    data = get_release_details(booking_id)
+    if request.method == 'POST':
+        release_spot(booking_id)
+        return redirect('/user')
+    return render_template("release_parking_spot.html", data=data)
+
+@app.route('/edit_profile', methods=['GET', 'POST'])
+def edit_profile():
+    user = get_current_user()
+    if not user:
+        flash("Please log in first.", "warning")
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        name = request.form.get('name')
+        address = request.form.get('address')
+        pincode = request.form.get('pincode')
+        password = request.form.get('password')
+        if not name or not address or not pincode:
+            flash("All fields except password are required.", "danger")
+        else:
+            user.name = name
+            user.address = address
+            user.pincode = pincode
+            if password:
+                user.password = generate_password_hash(password)
+            try:
+                db.session.commit()
+                flash("Profile updated successfully!","success")
+                return redirect(url_for('user_dashboard'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error updating profile:{str(e)}","danger")
+    return render_template('edit_profile.html', user=user)
+
+@app.route('/user/summary')
+def user_summary():
+    if 'u_id' not in session:
+        flash("Please log in to view summary", "warning")
+        return redirect(url_for('login'))
+    user_id = session['u_id']
+    user = User.query.get(user_id) 
+    reservations = Reservation.query.filter_by(user_id=user_id).all()
+    total_bookings = len(reservations)
+    total_spent = 0
+    for r in reservations:
+        if r.total_cost:
+            total_spent=total_spent+r.total_cost
+        else:
+            total_spent=total_spent
+    lot_usage = {}
+    for r in reservations:
+        lot = r.spot.lot
+        if lot.lot_id not in lot_usage:
+            lot_usage[lot.lot_id] = {
+                'location': lot.prime_location_name,
+                'count': 1
+            }
+        else:
+            lot_usage[lot.lot_id]['count'] += 1
+    return render_template('user_summary.html',
+                           user=user, 
+                           total_bookings=total_bookings,
+                           total_spent=round(total_spent, 2),
+                           lot_usage=lot_usage)
+
+if __name__ == '__main__':
+   app.run(debug=True)

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>User Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            background-color: #f5f3f7;
+        }
+
+        /* Navbar style */
+        .navbar {
+            background-color: #027b6d;
+            padding: 15px 30px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .navbar .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+            font-weight: 500;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        h3 {
+            color: #4a0072;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            margin: 20px 0;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+
+        th {
+            background-color: #398cda;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        a {
+            color: #2db9d4;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            width: 250px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background-color: #8e24aa;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        button:hover {
+            background-color: #6a1b9a;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 15px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>Welcome {{ user.name }}!</h2>
+        <div class="nav-links">
+            <a href="{{ url_for('user_dashboard') }}">Home</a>
+            <a href="{{ url_for('user_summary') }}">Summary</a>
+            <a href="{{ url_for('edit_profile') }}">Edit Profile</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h3>Recent Parking History</h3>
+        <table>
+            <tr><th>ID</th><th>Location</th><th>Vehicle No</th><th>Timestamp</th><th>Action</th></tr>
+            {% for item in history %}
+            <tr>
+                <td>{{ item.res_id }}</td>
+                <td>{{ item.spot.lot.prime_location_name }}</td>
+                <td>{{ item.vehicle_no }}</td>
+                <td>{{ item.parking_timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if item.leaving_timestamp is none %}
+                        <a href="/user/release/{{ item.res_id }}">Release</a>
+                    {% else %}
+                        Parked Out
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="no-data">No parking history available yet.</td></tr>
+            {% endfor %}
+        </table>
+
+        <h3>Search Parking location</h3>
+        <form method="get">
+            <input type="text" name="location" placeholder="Eg: Vandalur">
+            <button type="submit">Search</button>
+        </form>
+
+        <h3>Parking Lots @ {{ location }}</h3>
+        <table>
+            <tr><th>ID</th><th>Address</th><th>Availability</th><th>Action</th></tr>
+            {% for lot in lots %}
+            <tr>
+                <td>{{ lot.lot_id }}</td>
+                <td>{{ lot.address }}</td>
+                <td>
+                    {{
+                        lot.max_spots - (
+                            lot.spots | selectattr('status', 'equalto', 'O') | list | length
+                        )
+                    }}
+                </td>
+                <td><a href="/user/book/{{ lot.lot_id }}">Book</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="no-data">No parking lots found for this location.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+</body>
+</html>
